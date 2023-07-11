@@ -33,6 +33,13 @@ from aioblescan.plugins import ATCMiThermometer
 from aioblescan.plugins import ThermoBeacon
 from aioblescan.plugins import Tilt
 
+# start custom code import
+import subprocess
+import json
+from aioblescan.plugins import WinDoor
+#end custom code import
+
+
 # global
 opts = None
 decoders = []
@@ -65,14 +72,25 @@ def my_process(data):
     if opts.raw:
         print("Raw data: {}".format(ev.raw_data))
     if decoders:
-        for leader, decoder in decoders:
-            xx = decoder.decode(ev)
-            if xx:
-                if opts.leader:
-                    print(f"{leader} {json.dumps(xx)}")
+        if xx:
+            if opts.leader:
+                # start custom code
+                if (leader == "Temperature info"):
+                    json_data = format(xx)
+                    new_json = json.dumps(json_data)
+                    mqtt_json = new_json.replace("'", "\\\\\\\"")
+                    subprocess.call(['sh /custom/script/mqtt_pub.sh temp ' + mqtt_json],shell=True)
+                if(leader == "Window/Door info"):
+                    json_data = format(xx)
+                    new_json = json.dumps(json_data)
+                    mqtt_json = new_json.replace("'", "\\\\\\\"")
+                    subprocess.call(['sh /custom/script/mqtt_pub.sh door ' + mqtt_json],shell=True)
+                # end custom code
                 else:
-                    print(f"{json.dumps(xx)}")
+				    #uncomment if debugging
+                    #print("{}".format(xx))
                 break
+
     else:
         ev.show(0)
 
@@ -214,6 +232,16 @@ def main():
         dest="leader",
         help="suppress leading text identifier",
     )
+    #parser added for door/window sensor
+    parser.add_argument(
+        "-W",
+        "--windoor",
+        action="store_true",
+        default=False,
+        help="Look only for Mijia Window/Door messages",
+    )
+    #end parser
+	
     try:
         opts = parser.parse_args()
     except Exception as e:
@@ -229,6 +257,11 @@ def main():
         decoders.append(("Temperature info", ThermoBeacon()))
     if opts.tilt:
         decoders.append(("Tilt", Tilt()))
+    # start window/door sensor
+	if opts.windoor:
+        decoders.append(("Window/Door info", WinDoor()))
+    # end window/door sensor
+		
     try:
         asyncio.run(amain())
     except:
