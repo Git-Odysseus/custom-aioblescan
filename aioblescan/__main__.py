@@ -72,24 +72,26 @@ def my_process(data):
     if opts.raw:
         print("Raw data: {}".format(ev.raw_data))
     if decoders:
-        if xx:
-            if opts.leader:
-                # start custom code
-                if (leader == "Temperature info"):
-                    json_data = format(xx)
-                    new_json = json.dumps(json_data)
-                    mqtt_json = new_json.replace("'", "\\\\\\\"")
-                    subprocess.call(['sh /custom/script/mqtt_pub.sh temp ' + mqtt_json],shell=True)
-                if(leader == "Window/Door info"):
-                    json_data = format(xx)
-                    new_json = json.dumps(json_data)
-                    mqtt_json = new_json.replace("'", "\\\\\\\"")
-                    subprocess.call(['sh /custom/script/mqtt_pub.sh door ' + mqtt_json],shell=True)
-                # end custom code
-                else:
-				    #uncomment if debugging
-                    #print("{}".format(xx))
-                break
+        for leader, decoder in decoders:
+            xx = decoder.decode(ev)	
+			if xx:
+				if opts.leader:
+					# start custom code
+					if (leader == "Temperature info"):
+						json_data = format(xx)
+						new_json = json.dumps(json_data)
+						mqtt_json = new_json.replace("'", "\\\\\\\"")
+						subprocess.call(['sh /custom/script/mqtt_pub.sh temp ' + mqtt_json],shell=True)
+					if(leader == "Window/Door info"):
+						json_data = format(xx)
+						new_json = json.dumps(json_data)
+						mqtt_json = new_json.replace("'", "\\\\\\\"")
+						subprocess.call(['sh /custom/script/mqtt_pub.sh door ' + mqtt_json],shell=True)
+					# end custom code
+                #uncomment 2 lines below if debugging
+				#else:
+				    #print("{}".format(xx))
+				break
 
     else:
         ev.show(0)
